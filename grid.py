@@ -53,92 +53,78 @@ def grid_alea(width, height):
 
 
 
-def resolve_dfs(grid, start_pos, end_pos):
+def resolve_dfs(grid, start_pos, end_pos, nbr_action=0, action=None, real_start=None):
+    if action is None:
+        action = []
     player = "◆"
     p_x, p_y = start_pos
+    if real_start is None:
+        real_start= start_pos
     grid[p_y][p_x] = player
-    
-    nbr_action = 0
-    action = []
 
+    directions = {
+        "right": (1, 0),
+        "down": (0, 1),
+        "left": (-1, 0),
+        "up": (0, -1)
+    }
 
-    while [p_x, p_y] != end_pos:
+    def move(direction):
+        nonlocal p_x, p_y
+        dx, dy = directions[direction]
+        grid[p_y][p_x] = "⧅"  # miette du petit poussé
+        p_x += dx
+        p_y += dy
+        grid[p_y][p_x] = player
+        action.append(direction)
 
-        # Droite
-        if p_x + 1 < len(grid[0]) and grid[p_y][p_x+1] != "■" and grid[p_y][p_x+1] != "⧅":
-            grid[p_y][p_x] = "⧅"  # miette du petit poussé
-            p_x += 1  # déplacement à droite
-            grid[p_y][p_x] = player  
-            action.append("right")
+    def backtrack():
+        nonlocal p_x, p_y
+        last_action = action.pop()
+        dx, dy = directions[last_action]
+        grid[p_y][p_x] = "⧅"
+        p_x -= dx
+        p_y -= dy
+        grid[p_y][p_x] = player
 
-        # Bas
-        elif p_y + 1 < len(grid) and grid[p_y+1][p_x] != "■" and grid[p_y+1][p_x] != "⧅":
-            grid[p_y][p_x] = "⧅"
-            p_y += 1  
-            grid[p_y][p_x] = player 
-            action.append("down")
+    if p_x + 1 < len(grid[0]) and grid[p_y][p_x + 1] not in ["■", "⧅"]:
+        move("right")
+    elif p_y + 1 < len(grid) and grid[p_y + 1][p_x] not in ["■", "⧅"]:
+        move("down")
+    elif p_x - 1 >= 0 and grid[p_y][p_x - 1] not in ["■", "⧅"]:
+        move("left")
+    elif p_y - 1 >= 0 and grid[p_y - 1][p_x] not in ["■", "⧅"]:
+        move("up")
+    elif len(action) <= 0:
+        print("No solution")
+        return grid
+    else:
+        backtrack()
 
-        # Gauche
-        elif p_x - 1 >= 0 and grid[p_y][p_x-1] != "■" and grid[p_y][p_x-1] != "⧅":
-            grid[p_y][p_x] = "⧅"  
-            p_x -= 1  
-            grid[p_y][p_x] = player 
-            action.append("left")
+    nbr_action += 1
+    for row in grid:
+        print(" ".join(row))
+    time.sleep(0.5)
+    subprocess.run(["clear"])
 
-        # Haut
-        elif p_y - 1 >= 0 and grid[p_y-1][p_x] != "■" and grid[p_y-1][p_x] != "⧅":
-            grid[p_y][p_x] = "⧅"
-            p_y -= 1  
-            grid[p_y][p_x] = player  
-            action.append("up")
-        
-        elif len(action) <= 0:
-            print("No solution")
-            return grid
+    if [p_x, p_y] != end_pos:
+        resolve_dfs(grid, [p_x, p_y], end_pos, nbr_action, action, real_start)
+        return grid
 
-        # Retour en arrière
-        else:
-            grid[p_y][p_x] = "⧅"
-            last_action = action.pop()
-            match last_action:
-                case "right":
-                    p_x -= 1
-                case "down":
-                    p_y -= 1
-                case "left":
-                    p_x += 1
-                case "up":
-                    p_y += 1
-            grid[p_y][p_x] = player
-
-        nbr_action += 1
-        for row in grid:
-            print(" ".join(row))
-        # print("--------------------------------------------")
-        time.sleep(0.5)
-        subprocess.run(["clear"])
-
-    p_x, p_y = start_pos
+    # Print the final path
+    p_x, p_y = real_start
     for steps in action:
-        if steps == "right":
-            grid[p_y][p_x] = "→"
-            p_x += 1
-        elif steps == "down":
-            grid[p_y][p_x] = "↓"
-            p_y += 1
-        elif steps == "left":
-            grid[p_y][p_x] = "←"
-            p_x -= 1
-        elif steps == "up":
-            grid[p_y][p_x] = "↑"
-            p_y -= 1
-        
+        dx, dy = directions[steps]
+        grid[p_y][p_x] = {"right": "→", "down": "↓", "left": "←", "up": "↑"}[steps]
+        p_x += dx
+        p_y += dy
         for row in grid:
             print(" ".join(row))
         time.sleep(0.5)
         subprocess.run(["clear"])
-    print("The maze has been solved in "+str(nbr_action)+" steps")
-    print("The optimal path is "+str(len(action))+" steps")
+
+    print("The maze has been solved in " + str(nbr_action) + " steps")
+    print("The optimal path is " + str(len(action)) + " steps")
     return grid
 
 def resolve_bfs(grid, start_pos, end_pos, speed = 0.1):
@@ -158,26 +144,14 @@ def resolve_bfs(grid, start_pos, end_pos, speed = 0.1):
         for players in players_pos:
             if [players[0], players[1]] == end_pos:
                 grid[players[1]][players[0]] = player
-                p_y, p_x = [0,0]
-                for steps in players[2]:
-                    if steps == "right":
-                        grid[p_y][p_x] = "→"
-                        p_x += 1
-                    elif steps == "down":
-                        grid[p_y][p_x] = "↓"
-                        p_y += 1
-                    elif steps == "left":
-                        grid[p_y][p_x] = "←"
-                        p_x -= 1
-                    elif steps == "up":
-                        grid[p_y][p_x] = "↑"
-                        p_y -= 1
-                    
+                for step in players[2]:
+                    p_y, p_x = step
+                    grid[p_y][p_x] = "@"
                     for row in grid:
                         print(" ".join(row))
                     time.sleep(0.5)
                     subprocess.run(["clear"])
-                print("The maze has been solved in "+str(nbr_action)+" steps")
+                print("The maze has been solved in " + str(nbr_action) + " steps")
                 return grid
             else:
                 grid[players[1]][players[0]] = "⧅"
@@ -205,19 +179,19 @@ def resolve_bfs(grid, start_pos, end_pos, speed = 0.1):
                 players_pos.remove(players)
                 continue
 
-            memory = players[2][:]  # Create a shallow copy of the memory list
+            memory = players[2]
         
             if possibilites[0] == "down":
-                memory.append('down')
+                memory.append([y,x])
                 players[1] += 1
             elif possibilites[0] == "right":
-                memory.append('right')
+                memory.append([y,x])
                 players[0] += 1
             elif possibilites[0] == "left":
-                memory.append('left')
+                memory.append([y,x])
                 players[0] -= 1
             elif possibilites[0] == "up":
-                memory.append('up')
+                memory.append([y,x])
                 players[1] -= 1
 
             players[2] = memory  # Update the player's memory with the new path
@@ -230,18 +204,18 @@ def resolve_bfs(grid, start_pos, end_pos, speed = 0.1):
             nbr_action += 1
             if len(possibilites) > 1:
                 for i in range(1, len(possibilites)):
-                    new_memory = memory[:]  # Create a new copy of the memory list for each new player position
+                    new_memory = memory[:]
                     if possibilites[i] == "down":
-                        new_memory.append("down")
+                        new_memory.append([y,x])
                         players_pos.append([x, y + 1, new_memory])
                     elif possibilites[i] == "right":
-                        new_memory.append("right")
+                        new_memory.append([y,x])
                         players_pos.append([x + 1, y, new_memory])
                     elif possibilites[i] == "left":
-                        new_memory.append("left")
+                        new_memory.append([y,x])
                         players_pos.append([x - 1, y, new_memory])
                     elif possibilites[i] == "up":
-                        new_memory.append("up")
+                        new_memory.append([y,x])
                         players_pos.append([x, y - 1, new_memory])
 
             grid[players[1]][players[0]] = player
@@ -265,7 +239,7 @@ def resolve_bfs(grid, start_pos, end_pos, speed = 0.1):
 
 # int width, int height
 grid, start_pos, end_pos = grid_init(7, 6)
-# grid, start_pos, end_pos = grid_alea(20, 20)
+# grid, start_pos, end_pos = grid_alea(10, 10)
 
 
 # resolve_dfs(grid, start_pos, end_pos)
